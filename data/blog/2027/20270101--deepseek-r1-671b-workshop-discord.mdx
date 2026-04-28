@@ -1,0 +1,88 @@
+---
+title: 'DeepSeek R1 671B 工作坊實作踩坑紀錄'
+subtitle: 'Ubuntu、WSL、Podman 與 Open WebUI 連線'
+date: '2027-01-01'
+lastmod: '2027-01-01'
+tags: ['openai', 'deepseek', 'google', 'open-source', 'windows']
+draft: true
+summary: '個人雖然裝了 Ubuntu 一個多月，但多數也都只是用圖形介面。30 年前曾經學過很基礎的 Unix，當然都忘光了。'
+---
+
+個人雖然裝了 Ubuntu 一個多月，但多數也都只是用圖形介面。30 年前曾經學過很基礎的 Unix，當然都忘光了。
+
+經過將近兩週斷續的奮鬥，我完成了以下兩種環境的服務執行及 Open WebUI 連線:
+- 3070 + WSL + Podman
+- 4090 + Ubuntu + Podman + Proxy
+
+尚有待努力:
+- 兩台串聯（分散式部署）上課中未完成
+- 老師後續補充有關壓測 [benchmark_serving.py](https://github.com/vllm-project/vllm/blob/main/benchmarks/benchmark_serving.py)，以及我自己寫的 [llm-load-test](https://github.com/ChrisTorng/llm-load-test)
+- Dockerfile 內容
+
+保哥整理的 [企業級 LLM 叢集部署實戰工作坊 (DeepSeek R1 671B)](https://learn.duotify.com/courses/ai-deploy-labs) 非常精華。如果跟著順順做完成功，能學到的還是有限。我親自踩過其中不少坑，其中遇到的每一個問題，怎樣進行障礙排除，學到什麼知識與技巧，才是真正累積下來的資產。
+
+其中的 Dockerfile，我只有約略瀏覽，這又是另一個極度濃縮的精華，希望後續還有時間繼續消化。
+
+由這次的經驗，我學到還是一步步依官網文件做最可靠。將錯誤訊息貼給 ChatGPT (4o/o4-mini 等) 想得到正確解答還是有很多困難，繞了不少冤枉路。
+
+底下列出我這次參考到的相關網頁:
+- nVidia
+  - [CUDA on WSL User Guide](https://docs.nvidia.com/cuda/wsl-user-guide/index.html)
+  - [Support for Container Device Interface](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/cdi-support.html)
+- Podman
+  - [GPU container access](https://podman-desktop.io/docs/podman/gpu)
+  - [Accessing Podman from another WSL distribution](https://podman-desktop.io/docs/podman/accessing-podman-from-another-wsl-instance)
+
+有些認為是保哥整理說明步驟內可以再補充或修正的，我會再寫出來。另還有更多細節，希望我還有時間，可以後續再整理出來。
+
+---
+
+有關 保哥整理的 [企業級 LLM 叢集部署實戰工作坊 (DeepSeek R1 671B)](https://learn.duotify.com/courses/ai-deploy-labs) 文件中我認為可以改善的:
+
+- 有關 `sudo apt-get update` 相關部份，我自己都用 `sudo apt update`。就我目前認知，`apt-get` 好像比較舊，`apt` 是新一代的指令。剛剛查到的參考文件 [Difference Between apt and apt-get Commands \[Explained\]](https://itsfoss.com/apt-vs-apt-get-difference/)。
+
+- `mulitnode-vllm-sgl` 拼錯字，應該是 `multinode-vllm-sgl`，`it` vs `ti`。
+
+- `multinode-vllm-sgl` 執行環境裡面若需要 `sudo`，密碼由 `Dockerfile` 裡面看到應該是 `SSH_PASSWORD` 的 `multinode1234567`，並非上課中用到的 `deepseek1234567`。
+
+- 「測試 LLM 的 API」裡面提供的兩個指令，目前看都不完整，不確定先前是否是正確的? 我自己在 Ubuntu 裡使用:
+  ```bash
+  curl http://localhost:8000/v1/chat/completions \
+    -H "Content-Type: application/json" \
+    -d '{
+        "model": "google/gemma-3-1b-it",
+        "messages": [
+            {"role": "system", "content": "You are a helpful assistant."},
+            {"role": "user", "content": "Who won the world series in 2020?"}
+        ],
+        "stream": true
+    }'
+  ```
+  Windows 裡使用:
+  ```cmd
+  curl http://localhost:8000/v1/chat/completions  -H "Content-Type: application/json" -d "{\"model\": \"google/gemma-3-1b-it\", \"messages\": [{\"role\": \"system\", \"content\": \"You are a helpful assistant.\"}, {\"role\": \"user\", \"content\": \"Who won the world series in 2020?\"}], \"stream\": true}"
+  ```
+
+- Jupyter 步驟寫在啟動服務之後，我誤以為是要在已啟動 LLM 服務的狀態下再執行 Jupyter。還找到 LLM 服務執行中，按 [Ctrl+Z] 之後再執行 `bg` 指令的方式，還真的可以做到。不過建議把 Jupyter 寫在啟動服務之前，並標明是選擇性步驟。也可以加註提醒大家，上課中講師為大家事前準備的主機，實際上是停在這步。(可能還有額外的預先下載模型步驟?)
+
+- Jupyter 執行中顯示出來的網址 http://127.0.0.1:8888/lab?token=61cdf263a40314364498b9006d5dd2c37aa9682170befe5d 直接就可以用來登入，應該不用特別再提取得 token，再開啟 http://127.0.0.1:8888/ 並填入 token 值這樣的步驟。
+
+- Open WebUI 裡的 `OPENAI_API_BASE_URL` 參數，目前說明網頁內的 `"http://147.185.41.76/:8000/v1"` 一方面在 `/:8000` 前面多了一個 `/`，另可能有人沒注意直接貼上執行，錯誤 IP 預設值設進去，之後修改為正確參數也無法再變更了 (因為 volume 已建立，預設值無法再影響)。只能自行進入 Open WebUI - Admin Panel - Settigs - Connection 中修改。我想多數人自行練習時，會在同一台再開另一個 container 方式執行 Open WebUI，這裡我用 `localhost` 連自己也不通，最後試出來 `host.docker.internal` 才能通。
+
+- 第一次執行 Open WebUI 時，可以再加上 `DEFAULT_MODELS` 參數，這樣就不需要再手動選擇模型，直接可交談了。
+
+- 綜合以上兩點，我建議的指令為:
+  ```bash
+  podman run -d --name open-webui -p 3000:8080 \
+    --add-host=host.docker.internal:host-gateway \
+    -e OPENAI_API_BASE_URL="http://host.docker.internal:8000/v1" \
+    -e OPENAI_API_KEY="dummy" \
+    -e DEFAULT_MODELS="google/gemma-3-1b-it" \
+    -v open-webui:/app/backend/data \
+    --restart always \
+    ghcr.io/open-webui/open-webui:main
+  ```
+  可以再加註可自行修改 `OPENAI_API_BASE_URL` 與 `DEFAULT_MODELS` 參數。
+
+以上先跳過有關 WSL/Podman/Proxy 的部份。另 Grows.ai 部份我還沒做過，因此無法提供意見。
+
