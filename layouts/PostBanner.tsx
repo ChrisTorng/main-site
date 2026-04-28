@@ -18,7 +18,7 @@ interface LayoutProps {
 }
 
 export default function PostMinimal({ content, next, prev, children }: LayoutProps) {
-  const { slug, title, images } = content
+  const { slug, title, subtitle, images } = content
   const displayImage =
     images && images.length > 0 ? images[0] : 'https://picsum.photos/seed/picsum/800/400'
 
@@ -37,6 +37,11 @@ export default function PostMinimal({ content, next, prev, children }: LayoutPro
             </div>
             <div className="relative pt-10">
               <PageTitle>{title}</PageTitle>
+              {subtitle && (
+                <p className="mt-4 text-xl leading-8 font-semibold text-gray-700 dark:text-gray-300">
+                  {subtitle}
+                </p>
+              )}
             </div>
           </div>
           <div className="prose dark:prose-invert max-w-none py-4">{children}</div>

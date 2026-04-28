@@ -6,7 +6,10 @@ import { notFound } from 'next/navigation'
 const POSTS_PER_PAGE = 5
 
 export const generateStaticParams = async () => {
-  const totalPages = Math.ceil(allBlogs.length / POSTS_PER_PAGE)
+  const publishedBlogs = allBlogs.filter(
+    (post) => process.env.NODE_ENV !== 'production' || !post.draft
+  )
+  const totalPages = Math.ceil(publishedBlogs.length / POSTS_PER_PAGE)
   const paths = Array.from({ length: totalPages }, (_, i) => ({ page: (i + 1).toString() }))
 
   return paths
@@ -14,7 +17,10 @@ export const generateStaticParams = async () => {
 
 export default async function Page(props: { params: Promise<{ page: string }> }) {
   const params = await props.params
-  const posts = allCoreContent(sortPosts(allBlogs))
+  const publishedBlogs = allBlogs.filter(
+    (post) => process.env.NODE_ENV !== 'production' || !post.draft
+  )
+  const posts = allCoreContent(sortPosts(publishedBlogs))
   const pageNumber = parseInt(params.page as string)
   const totalPages = Math.ceil(posts.length / POSTS_PER_PAGE)
 
@@ -29,6 +35,7 @@ export default async function Page(props: { params: Promise<{ page: string }> })
   const pagination = {
     currentPage: pageNumber,
     totalPages: totalPages,
+    basePath: 'blog',
   }
 
   return (
@@ -37,6 +44,7 @@ export default async function Page(props: { params: Promise<{ page: string }> })
       initialDisplayPosts={initialDisplayPosts}
       pagination={pagination}
       title="所有文章"
+      activePath="/blog"
     />
   )
 }

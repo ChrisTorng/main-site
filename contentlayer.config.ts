@@ -28,6 +28,13 @@ import prettier from 'prettier'
 
 const root = process.cwd()
 const isProduction = process.env.NODE_ENV === 'production'
+const datePrefixPattern = /^\d{8}--/
+
+function stripDatePrefixFromPath(filePath: string) {
+  const parts = filePath.split('/')
+  const fileName = parts.pop() || ''
+  return [...parts, fileName.replace(datePrefixPattern, '')].join('/')
+}
 
 // heroicon mini link
 const icon = fromHtmlIsomorphic(
@@ -46,11 +53,11 @@ const computedFields: ComputedFields = {
   readingTime: { type: 'json', resolve: (doc) => readingTime(doc.body.raw) },
   slug: {
     type: 'string',
-    resolve: (doc) => doc._raw.flattenedPath.replace(/^.+?(\/)/, ''),
+    resolve: (doc) => stripDatePrefixFromPath(doc._raw.flattenedPath).replace(/^.+?(\/)/, ''),
   },
   path: {
     type: 'string',
-    resolve: (doc) => doc._raw.flattenedPath,
+    resolve: (doc) => stripDatePrefixFromPath(doc._raw.flattenedPath),
   },
   filePath: {
     type: 'string',
@@ -99,6 +106,7 @@ export const Blog = defineDocumentType(() => ({
   contentType: 'mdx',
   fields: {
     title: { type: 'string', required: true },
+    subtitle: { type: 'string' },
     date: { type: 'date', required: true },
     tags: { type: 'list', of: { type: 'string' }, default: [] },
     lastmod: { type: 'date' },
@@ -122,7 +130,7 @@ export const Blog = defineDocumentType(() => ({
         dateModified: doc.lastmod || doc.date,
         description: doc.summary,
         image: doc.images ? doc.images[0] : siteMetadata.socialBanner,
-        url: `${siteMetadata.siteUrl}/${doc._raw.flattenedPath}`,
+        url: `${siteMetadata.siteUrl}/${stripDatePrefixFromPath(doc._raw.flattenedPath)}`,
       }),
     },
   },

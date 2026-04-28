@@ -21,7 +21,7 @@ export default function Home({ posts }) {
         <ul className="divide-y divide-gray-200 dark:divide-gray-700">
           {!posts.length && 'No posts found.'}
           {posts.slice(0, MAX_DISPLAY).map((post) => {
-            const { slug, date, title, summary, tags } = post
+            const { slug, date, title, subtitle, summary, tags } = post
             return (
               <li key={slug} className="py-12">
                 <article>
@@ -43,6 +43,11 @@ export default function Home({ posts }) {
                               {title}
                             </Link>
                           </h2>
+                          {subtitle && (
+                            <p className="mt-1 text-lg leading-7 font-semibold text-gray-700 dark:text-gray-300">
+                              {subtitle}
+                            </p>
+                          )}
                           <div className="flex flex-wrap">
                             {tags.map((tag) => (
                               <Tag key={tag} text={tag} />
